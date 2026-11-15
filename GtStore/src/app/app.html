@@ -1,3 +1,99 @@
-<section>
-  <h1>This is our first E-commerce page </h1>
-</section>
+<main class="page">
+  <header class="page-header">
+    <p class="eyebrow">GtStore learning lab</p>
+    <h1>Angular signals, in action</h1>
+    <p class="intro">
+      Signals are reactive values. When a signal changes, Angular updates the parts of the screen
+      that read it.
+    </p>
+  </header>
+
+  <section class="demo-card" aria-labelledby="demo-title">
+    <div class="product-details">
+      <p class="eyebrow">A tiny cart example</p>
+      <h2 id="demo-title">{{ productName }}</h2>
+      <p class="price">Price: ${{ unitPrice.toFixed(2) }} each</p>
+
+      <div class="quantity-row">
+        <span id="quantity-label">Quantity</span>
+        <div class="quantity-control" role="group" aria-labelledby="quantity-label">
+          <button
+            type="button"
+            aria-label="Decrease quantity"
+            [disabled]="!canDecrease()"
+            (click)="decreaseQuantity()"
+          >
+            −
+          </button>
+          <output aria-live="polite">{{ quantity() }}</output>
+          <button
+            type="button"
+            aria-label="Increase quantity"
+            [disabled]="!canIncrease()"
+            (click)="increaseQuantity()"
+          >
+            +
+          </button>
+        </div>
+      </div>
+
+      <button
+        class="reset-button"
+        type="button"
+        [disabled]="quantity() === 1"
+        (click)="resetQuantity()"
+      >
+        Reset quantity
+      </button>
+
+      @if (quantity() === maxQuantity) {
+        <p class="limit-message" role="status">
+          You've reached the limit of {{ maxQuantity }} items.
+        </p>
+      }
+    </div>
+
+    <aside class="subtotal-card" aria-label="Cart subtotal">
+      <p>Subtotal</p>
+      <strong aria-live="polite">${{ subtotal().toFixed(2) }}</strong>
+      <span>{{ quantity() }} × ${{ unitPrice.toFixed(2) }}</span>
+    </aside>
+  </section>
+
+  <section class="lesson" aria-labelledby="lesson-title">
+    <h2 id="lesson-title">What to notice</h2>
+    <div class="lesson-grid">
+      <article>
+        <h3>1. A signal stores state</h3>
+        <pre><code>quantity = signal(1);</code></pre>
+        <p>
+          Read it by calling it: <code>quantity()</code>. The template does this to show the
+          quantity.
+        </p>
+      </article>
+      <article>
+        <h3>2. Update the value</h3>
+        <pre><code>quantity.update(current =&gt; current + 1);</code></pre>
+        <p>
+          <code>update()</code> uses the previous value. Use <code>set(1)</code> when you already
+          know the value.
+        </p>
+      </article>
+      <article>
+        <h3>3. Derive values with computed</h3>
+        <pre><code>subtotal = computed(
+  () =&gt; quantity() * unitPrice
+);</code></pre>
+        <p>
+          <code>computed()</code> tracks the signals it reads and recalculates when they change. It
+          is read-only and cached until then.
+        </p>
+      </article>
+    </div>
+    <p class="effect-note">
+      <strong>What about <code>effect()</code>?</strong>
+      Use effects for side effects, such as synchronizing with browser storage. For values derived
+      from other state, prefer <code>computed()</code>.
+    </p>
+  </section>
+</main>
