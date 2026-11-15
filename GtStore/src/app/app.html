@@ -1,17 +1,21 @@
 <main class="page">
   <header class="page-header">
-    <p class="eyebrow">GtStore learning lab</p>
+    <p class="eyebrow">GtStore learning lab · Angular 21</p>
     <h1>Angular signals, in action</h1>
     <p class="intro">
-      Signals are reactive values. When a signal changes, Angular updates the parts of the screen
-      that read it.
+      A signal is a getter around a current value. Angular tracks where it is read and updates
+      interested consumers when that value changes.
+    </p>
+    <p class="version-note">
+      This page uses APIs available in this project's Angular 21 installation. The root component
+      uses <code>OnPush</code> change detection.
     </p>
   </header>
 
-  <section class="demo-card" aria-labelledby="demo-title">
+  <section class="demo-card" aria-labelledby="cart-title">
     <div class="product-details">
-      <p class="eyebrow">A tiny cart example</p>
-      <h2 id="demo-title">{{ productName }}</h2>
+      <p class="eyebrow">Writable and computed signals</p>
+      <h2 id="cart-title">{{ productName }}</h2>
       <p class="price">Price: ${{ unitPrice.toFixed(2) }} each</p>
 
       <div class="quantity-row">
@@ -38,62 +42,253 @@
       </div>
 
       <button
-        class="reset-button"
+        class="text-button"
         type="button"
         [disabled]="quantity() === 1"
         (click)="resetQuantity()"
       >
-        Reset quantity
+        Reset with <code>set(1)</code>
       </button>
 
       @if (quantity() === maxQuantity) {
-        <p class="limit-message" role="status">
-          You've reached the limit of {{ maxQuantity }} items.
-        </p>
+        <p class="limit-message" role="status">Maximum quantity: {{ maxQuantity }}.</p>
       }
     </div>
 
     <aside class="subtotal-card" aria-label="Cart subtotal">
-      <p>Subtotal</p>
+      <p>Computed subtotal</p>
       <strong aria-live="polite">${{ subtotal().toFixed(2) }}</strong>
       <span>{{ quantity() }} × ${{ unitPrice.toFixed(2) }}</span>
     </aside>
   </section>
 
-  <section class="lesson" aria-labelledby="lesson-title">
-    <h2 id="lesson-title">What to notice</h2>
-    <div class="lesson-grid">
-      <article>
-        <h3>1. A signal stores state</h3>
-        <pre><code>quantity = signal(1);</code></pre>
+  <section class="concept-section" aria-labelledby="reactivity-title">
+    <div class="section-heading">
+      <p class="eyebrow">Dependency tracking</p>
+      <h2 id="reactivity-title">Reactive contexts</h2>
+      <p>
+        Templates, <code>computed()</code>, and <code>effect()</code> are reactive contexts. Signal
+        reads made synchronously in them become dependencies.
+      </p>
+    </div>
+
+    <div class="concept-grid">
+      <article class="concept-card">
+        <h3>Computed values and dynamic dependencies</h3>
         <p>
-          Read it by calling it: <code>quantity()</code>. The template does this to show the
-          quantity.
+          <code>cartSummary</code> reads <code>showSubtotal</code> every time, but reads
+          <code>subtotal</code> only while the subtotal is shown. Computeds are read-only, lazy, and
+          memoized.
         </p>
+        <button class="text-button" type="button" (click)="toggleSubtotal()">
+          {{ showSubtotal() ? 'Hide' : 'Show' }} computed subtotal
+        </button>
+        <p class="result" aria-live="polite">{{ cartSummary() }}</p>
+        <pre><code>computed(() =&gt;
+  showSubtotal() ? subtotal() : 'hidden'
+)</code></pre>
       </article>
-      <article>
-        <h3>2. Update the value</h3>
-        <pre><code>quantity.update(current =&gt; current + 1);</code></pre>
+
+      <article class="concept-card">
+        <h3>Read without tracking with <code>untracked()</code></h3>
         <p>
-          <code>update()</code> uses the previous value. Use <code>set(1)</code> when you already
-          know the value.
+          This computed tracks the name, not the incidental counter. Changing the counter alone
+          leaves the summary cached; changing the name recomputes it.
         </p>
+        <p>
+          Incidental counter: <strong>{{ incidentalCount() }}</strong>
+        </p>
+        <p class="result">{{ untrackedSummary() }}</p>
+        <div class="button-row">
+          <button class="text-button" type="button" (click)="incrementIncidentalCount()">
+            Change untracked counter
+          </button>
+          <button class="text-button" type="button" (click)="changeTrackedName()">
+            Change tracked name
+          </button>
+        </div>
+        <pre><code>computed(() =&gt;
+  trackedName() + ' / ' + untracked(incidentalCount)
+)</code></pre>
       </article>
-      <article>
-        <h3>3. Derive values with computed</h3>
-        <pre><code>subtotal = computed(
-  () =&gt; quantity() * unitPrice
-);</code></pre>
+
+      <article class="concept-card">
+        <h3>Async work loses the reactive context</h3>
         <p>
-          <code>computed()</code> tracks the signals it reads and recalculates when they change. It
-          is read-only and cached until then.
+          The effect tracks <code>asyncRun</code>. It reads <code>theme</code> only after a promise
+          boundary, so changing the theme does not rerun that effect.
         </p>
+        <p>
+          Current theme: <strong>{{ theme() }}</strong>
+        </p>
+        <div class="button-row">
+          <button class="text-button" type="button" (click)="toggleTheme()">Change theme</button>
+          <button class="text-button" type="button" (click)="runAsyncEffect()">
+            Run async effect
+          </button>
+        </div>
+        <p class="result" aria-live="polite">{{ asyncResult() }}</p>
+        <pre><code>effect(() =&gt; {{ '{' }}
+  const run = asyncRun(); // tracked
+  Promise.resolve().then(() =&gt; theme()); // not tracked
+{{ '}' }})</code></pre>
+      </article>
+
+      <article class="concept-card">
+        <h3>Assert an API is outside a reactive context</h3>
+        <p>
+          Use <code>assertNotInReactiveContext()</code> inside imperative APIs that must not be
+          called from a computed or effect. This button handler is outside one.
+        </p>
+        <button class="text-button" type="button" (click)="assertImperativeContext()">
+          Run assertion
+        </button>
+        <p class="result" role="status">{{ assertionMessage() }}</p>
+        <pre><code>assertNotInReactiveContext(myApi);</code></pre>
       </article>
     </div>
-    <p class="effect-note">
-      <strong>What about <code>effect()</code>?</strong>
-      Use effects for side effects, such as synchronizing with browser storage. For values derived
-      from other state, prefer <code>computed()</code>.
-    </p>
   </section>
+
+  <section class="concept-section" aria-labelledby="advanced-title">
+    <div class="section-heading">
+      <p class="eyebrow">More signal tools</p>
+      <h2 id="advanced-title">Advanced topics</h2>
+      <p>
+        Examples of dependent state, asynchronous state, equality, type guards, and RxJS interop.
+      </p>
+    </div>
+
+    <div class="concept-grid">
+      <article class="concept-card">
+        <h3>Dependent state with <code>linkedSignal()</code></h3>
+        <p>
+          Unlike a computed, a linked signal is writable. When its source options change, its
+          selected value resets to the new first option.
+        </p>
+        <p>
+          Selected: <strong>{{ selectedDelivery() }}</strong>
+        </p>
+        <div class="button-row">
+          @for (option of deliveryOptions(); track option) {
+            <button
+              class="choice-button"
+              type="button"
+              [class.selected]="selectedDelivery() === option"
+              [attr.aria-pressed]="selectedDelivery() === option"
+              (click)="selectDelivery(option)"
+            >
+              {{ option }}
+            </button>
+          }
+        </div>
+        <button class="text-button" type="button" (click)="replaceDeliveryOptions()">
+          Replace available options
+        </button>
+      </article>
+
+      <article class="concept-card">
+        <h3>Async state with <code>resource()</code></h3>
+        <p>
+          A resource runs an async loader from reactive parameters and exposes loading, value, and
+          error state as signals.
+        </p>
+        <p>
+          Product: <strong>{{ resourceProduct() }}</strong>
+        </p>
+        <button class="text-button" type="button" (click)="changeResourceProduct()">
+          Load another product
+        </button>
+        <p>
+          Resource status: <strong>{{ productResource.status() }}</strong>
+        </p>
+        @if (productResource.isLoading()) {
+          <p class="result" role="status">Loading product details…</p>
+        }
+        @if (productResource.hasValue()) {
+          <p class="result">{{ productResource.value() }}</p>
+        }
+        @if (productResource.status() === 'error') {
+          <p class="error" role="alert">The product details could not be loaded.</p>
+        }
+      </article>
+
+      <article class="concept-card">
+        <h3>Custom equality</h3>
+        <p>
+          Signals default to <code>Object.is()</code>. This one compares text without case, so
+          setting <code>READY</code> is considered equal to <code>Ready</code>.
+        </p>
+        <p>
+          Stored value: <strong>{{ equalityValue() }}</strong>
+        </p>
+        <p>Equivalent writes attempted: {{ equalityAttempts() }}</p>
+        <button class="text-button" type="button" (click)="setEquivalentValue()">
+          Set equivalent value
+        </button>
+      </article>
+
+      <article class="concept-card">
+        <h3>Runtime type checks</h3>
+        <p><code>isSignal()</code> and <code>isWritableSignal()</code> are type guards.</p>
+        <ul class="check-list">
+          <li>quantity is a signal: {{ typeChecks.quantityIsSignal }}</li>
+          <li>quantity is writable: {{ typeChecks.quantityIsWritable }}</li>
+          <li>subtotal is a signal: {{ typeChecks.subtotalIsSignal }}</li>
+          <li>subtotal is writable: {{ typeChecks.subtotalIsWritable }}</li>
+        </ul>
+      </article>
+
+      <article class="concept-card">
+        <h3>Signals and RxJS</h3>
+        <p>
+          <code>toObservable()</code> bridges signal to observable; <code>toSignal()</code>
+          subscribes to an observable and exposes its latest value.
+        </p>
+        <p>
+          Signal → Observable → template: <strong>{{ quantityObservable | async }}</strong>
+        </p>
+        <button class="text-button" type="button" (click)="emitRxjsValue()">
+          Emit an RxJS value
+        </button>
+        <p class="result">Observable → signal: {{ observableMessage() }}</p>
+      </article>
+
+      <article class="concept-card">
+        <h3>Effects for non-reactive APIs</h3>
+        <p>
+          This component's constructor creates an <code>effect()</code> that logs quantity changes
+          with <code>console.info()</code>. Use effects to synchronize with imperative APIs, not to
+          copy state between signals.
+        </p>
+        <pre><code>effect(() =&gt; {{ '{' }}
+  console.info(quantity());
+{{ '}' }});</code></pre>
+      </article>
+
+      <article class="concept-card">
+        <h3>Debugging signals</h3>
+        <p>
+          Log a snapshot here, then use Angular DevTools to inspect the component and its signal
+          graph in a development build.
+        </p>
+        <button class="text-button" type="button" (click)="logSignalState()">
+          Log signal snapshot
+        </button>
+        <p class="result" role="status">{{ debugMessage() }}</p>
+        <a href="https://angular.dev/tools/devtools/signals" target="_blank" rel="noreferrer">
+          Angular DevTools signal graph guide
+        </a>
+      </article>
+    </div>
+  </section>
+
+  <footer class="page-footer">
+    <p>
+      Explore the
+      <a href="https://angular.dev/guide/signals" target="_blank" rel="noreferrer">
+        official Angular Signals guide
+      </a>
+      for more details.
+    </p>
+  </footer>
 </main>
